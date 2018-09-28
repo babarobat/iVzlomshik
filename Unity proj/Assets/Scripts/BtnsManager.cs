@@ -10,6 +10,12 @@ using UnityEngine.SceneManagement;
 public class BtnsManager : MonoBehaviour
 {
 
+
+
+    private GameData _currentGameData;
+    private InputPlusHistory _currentInputPlusHistory;
+    ///////
+
     public Text outputField;
     private int _target;
     public Text[] btns;
@@ -29,7 +35,7 @@ public class BtnsManager : MonoBehaviour
     MyInput tmpInput;
 
     private int _numberCounter;
-
+    private int _getRandomCombinationIndex;
     public InputContainer container;
 
     private int _stackOverflowCounter = 0;
@@ -57,8 +63,18 @@ public class BtnsManager : MonoBehaviour
             item.GetComponentInParent<Button>().interactable = true;
         }
     }
+    
+  
+
     public void NewGame()
     {
+
+
+        _target = GetRandomExceptNumber(1, 20, _target);
+        missionTextField.text = missionText + _target.ToString();
+
+
+
         foreach (var btn in buttons)
         {
             if (btn.name != "NewGameBtn")
@@ -68,63 +84,31 @@ public class BtnsManager : MonoBehaviour
         }
 
         _numberCounter = 0;
-       
-        _target = GetRandomExceptNumber(-20, 20,0);
-        string path = Path.Combine(Application.dataPath, "Data_" + _target.ToString());
-        if (File.Exists(path))
+        _currentGameData = new GameData();
+        _currentGameData = DataManager.LoadData(_target);
+        if ( _currentGameData == null || _currentGameData.dataList.Count == 0 )
         {
-            string dataRead = File.ReadAllText(path);
-            InputContainer loadedContainer = JsonUtility.FromJson<InputContainer>(dataRead);
-            container = new InputContainer(loadedContainer);
+            _currentGameData = ListCreator.CreateDataForTarget(_target);
+            DataManager.SaveData(_currentGameData, _target);
         }
-        else
-        {
-            container = new InputContainer();
-        }
-        
+
         _canClickNumber = true;
         _currentNumber = null;
         _currentUnswer = new Unswer();
         _currentOperation = string.Empty;
         outputField.text = _currentOperation;
         helpFiled.text = string.Empty;
-        tmpInput = new MyInput();
-        _currentUnswers = new List<Unswer>();
-        foreach (var item in btns)
+
+        _currentInputPlusHistory = _currentGameData.dataList[UnityEngine.Random.Range(0, _currentGameData.dataList.Count)];
+        _currentUnswer.history = _currentInputPlusHistory.history;
+        _currentUnswer.value = _target;
+        for (int i = 0; i < btns.Length; i++)
         {
-            item.GetComponentInParent<Button>().interactable = true;
-            var value = UnityEngine.Random.Range(1, 9);
-            tmpInput.input.Add(value);
-            item.text = value.ToString();
-        }
-
-        _currentUnswers = MainLogic.FindAnUnswers(tmpInput.input, _target);
-        tmpInput.input.Sort();
-
-        bool proverka = _currentUnswers == null ||
-            MainLogic.Contains(container.combinations, tmpInput.input) ||
-            MainLogic.ArrayContainsCountOfChar(_currentUnswers, '+', 3);
-
-        if (proverka)
-        {
-            if (_stackOverflowCounter < 100)
-            {
-                _stackOverflowCounter++;
-                NewGame();
-            }
-            else
-            {
-                throw new Exception("GameOver");
-            }
-        }
-        else
-        {
-            _stackOverflowCounter = 0;
-            _currentUnswer = _currentUnswers[UnityEngine.Random.Range(0, _currentUnswers.Count - 1)];
-            missionTextField.text = missionText + " " + _target.ToString();
-
-        }
+            btns[i].GetComponentInParent<Button>().interactable = true;
+            btns[i].text = _currentInputPlusHistory.myInput.input[i].ToString();
+        } 
     }
+
     public void NumberClick(Button button)
     {
         
@@ -155,10 +139,8 @@ public class BtnsManager : MonoBehaviour
             }
             if (_numberCounter == 4 && _currentNumber == _target)
             {
-                container.combinations.Add(tmpInput);
-                string data = JsonUtility.ToJson(container);
-                string path = Path.Combine(Application.dataPath, "Data_" + _target.ToString());
-                File.WriteAllText(path, data);
+                _currentGameData.dataList.Remove(_currentInputPlusHistory);
+                DataManager.SaveData(_currentGameData, _target);
                 GGpannel.gameObject.SetActive(true);
                 
             }
@@ -212,6 +194,7 @@ public class BtnsManager : MonoBehaviour
         if (i == exception)
         {
             i = GetRandomExceptNumber(a,b, exception);
+           
         }
         return i;
     }
