@@ -1,5 +1,6 @@
 ﻿using System.Collections.Generic;
 using System.Linq;
+using UnityEngine.UI;
 
 /// <summary>
 /// Вспомогательный статический класс для математических рассчетов
@@ -253,10 +254,68 @@ public static class MainLogic
         }
         return uniques;
     }
-    
+
     #endregion
 
-
+    public static int? Operation(int a, Operations operation, int b)
+    {
+        switch (operation)
+        {
+            case Operations.plus:
+                return a + b;
+                
+            case Operations.minus:
+                return a - b;
+                
+            case Operations.multi:
+                return a * b;
+            case Operations.div:
+                if (b != 0 && a % b == 0)
+                {
+                    return a / b;
+                }
+                else return null;
+            default:
+                return null;                
+        }
+       
+    }
+    public static string OperationToString(Operations operation)
+    {
+        switch (operation)
+        {
+            case Operations.plus:
+                return "+";
+            case Operations.minus:
+                return "-";
+            case Operations.multi:
+                return "x";
+            case Operations.div:
+                return "/";
+            case Operations.none:
+                return string.Empty;
+            default:
+                return string.Empty;
+        }
+    }
+    public static Operations StringToOperationParsing(string toOperation)
+    {
+        switch (toOperation)
+        {
+            case "+":
+                return Operations.plus;
+            case "-":
+                return Operations.minus;
+            case "/":
+                return Operations.div;
+            case "*":
+                return Operations.multi;
+            
+            default:
+                return Operations.none;
+                
+        }
+    }
 
 
 }

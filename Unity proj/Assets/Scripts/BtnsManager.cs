@@ -7,27 +7,102 @@ using UnityEngine.UI;
 using UnityEngine.SceneManagement;
 
 
+/// <summary>
+/// Менеджер кнопок
+/// </summary>
 public class BtnsManager : MonoBehaviour
 {
+    #region HelpButtns
+    void SetImageAndValueForHelpButtons()
+    {
+        for (int i = _helpButtons.Length - 1; i >= 0; i--)
+        {
+            var tmpImage = _helpButtons[i].GetComponent<Image>();
+            var tmptext = _helpButtons[i].GetComponentInChildren<Text>();
+            tmpImage.enabled = true;
+            tmptext.text = _currentUnswer.history[i].ToString();
+            tmptext.enabled = false;
+        }
 
+    }
+    void ResetHelpButtnsValues()
+    {
+        foreach (var btn in _helpButtons)
+        {
+            btn.GetComponentInChildren<Text>().text = string.Empty;
+        }
+    }
+    public void OpenHelpButton(Button button)
+    {
+        button.GetComponent<Image>().enabled = false;
+        button.GetComponentInChildren<Text>().enabled = true;
+    }
+    #endregion
 
-
-    private GameData _currentGameData;
-    private InputPlusHistory _currentInputPlusHistory;
-    ///////
-
+    #region Публичные текстовые элементы
+    /// <summary>
+    /// ссылка на текстовый эелемент поля вывода решения
+    /// </summary>
+    [Header("Текстовые поля")]
+    [Tooltip("ссылка на текстовый эелемент поля вывода решения")]
     public Text outputField;
-    private int _target;
-    public Text[] btns;
-    public Text helpFiled;
-    public Text missionTextField;
-    public string missionText;
-    public Transform GGpannel;
 
+    /// <summary>
+    /// ссылка на текстовый эелемент поля таймер
+    /// </summary>
+    [Tooltip("ссылка на текстовый эелемент поля таймер")]
+    public Text timerText;
+    /// <summary>
+    /// ссылка на текстовый эелемент поля текста задания
+    /// </summary>
+    [Tooltip("ссылка на текстовый эелемент поля текста задания")]
+    public Text missionTextField;
+    /// <summary>
+    /// Такст задания. В конце к нему прибавится переменная _target
+    /// </summary>
+    [Tooltip("Такст задания. В конце к нему прибавится переменная _target")]
+    public string missionText;
+    #endregion
+    #region Кнопки
+    /// <summary>
+    /// массив кнопок-подсказок
+    /// </summary>
+    [Space(10)]
+    [Header("Кнопки")]
+    [Tooltip("массив кнопок-подсказок")]
+    public Button[] _helpButtons;
+    /// <summary>
+    /// массив кнопок с цифрами
+    /// </summary>
+    [Tooltip("массив кнопок с цифрами")]
+    public Text[] NumberButtons;
+    #endregion
+    #region Панели
+    /// <summary>
+    /// Панель, вызывается при правильном ответе
+    /// </summary>
+    [Space(10)]
+    [Header("Панели")]
+    [Tooltip("Вызывается при правильном ответе")]
+    public Transform GoodGamePannel;
+    #endregion
+
+
+    /// <summary>
+    /// Можно кликать по кнопке с числом?
+    /// </summary>
     private bool _canClickNumber = false;
+    /// <summary>
+    /// Последнее нажатое число либо результат последней операции
+    /// </summary>
     private int? _currentNumber;
-    private string _currentOperation;
-    public List<Unswer> _currentUnswers;
+    /// <summary>
+    /// текущая операция(+-X=)
+    /// </summary>
+    //private string _currentOperation;
+    private Operations _currentOperation;
+
+    float _currentCount = 60;
     private Unswer _currentUnswer;
     private char[] _unswer;
     private List<int> _previous = new List<int>();
@@ -36,12 +111,48 @@ public class BtnsManager : MonoBehaviour
 
     private int _numberCounter;
     private int _getRandomCombinationIndex;
-    public InputContainer container;
 
+    private GameData _currentGameData;
+    private InputPlusHistory _currentInputPlusHistory;
     private int _stackOverflowCounter = 0;
+    private int _target;
+
+
+    void CountingAndDisplay()
+    {
+        timerText.text = _currentCount.ToString();
+        _currentCount -= 1;
+        if (_currentCount<10)
+        {
+            timerText.color = Color.red;
+            if (_currentCount==0)
+            {
+                StopCounting();
+                timerText.text = "LOOSER!";
+                timerText.color = Color.red;
+            }
+        }
+    }
+    void ResetCouning()
+    {
+        _currentCount = 60;
+        timerText.color = Color.white;
+    }
+    void StartCounting()
+    {
+        InvokeRepeating("CountingAndDisplay", 0, 1f);
+    }
+    void StopCounting()
+    {
+        CancelInvoke("CountingAndDisplay");
+        ResetCouning();
+    }
+
     private void Start()
     {
-        GGpannel.gameObject.SetActive(false);
+        
+        ResetHelpButtnsValues();
+        GoodGamePannel.gameObject.SetActive(false);
         buttons = FindObjectsOfType<Button>();
         foreach (var btn in buttons)
         {
@@ -50,15 +161,17 @@ public class BtnsManager : MonoBehaviour
                 btn.interactable = false;
             }
         }
+        NewGame();
     }
     public void ResetGame()
     {
+        
         _numberCounter = 0;
         _canClickNumber = true;
         _currentNumber = null;
-        _currentOperation = string.Empty;
-        outputField.text = _currentOperation;
-        foreach (var item in btns)
+        _currentOperation = Operations.none;
+        outputField.text = MainLogic.OperationToString(_currentOperation);
+        foreach (var item in NumberButtons)
         {
             item.GetComponentInParent<Button>().interactable = true;
         }
@@ -68,8 +181,8 @@ public class BtnsManager : MonoBehaviour
 
     public void NewGame()
     {
-
-
+        StopCounting();
+        StartCounting();
         _target = GetRandomExceptNumber(1, 20, _target);
         missionTextField.text = missionText + _target.ToString();
 
@@ -91,22 +204,25 @@ public class BtnsManager : MonoBehaviour
             _currentGameData = ListCreator.CreateDataForTarget(_target);
             DataManager.SaveData(_currentGameData, _target);
         }
-
+        
         _canClickNumber = true;
         _currentNumber = null;
         _currentUnswer = new Unswer();
-        _currentOperation = string.Empty;
-        outputField.text = _currentOperation;
-        helpFiled.text = string.Empty;
+        _currentOperation = Operations.none;
+        outputField.text = MainLogic.OperationToString(_currentOperation);
+        //helpFiled.text = string.Empty;
 
         _currentInputPlusHistory = _currentGameData.dataList[UnityEngine.Random.Range(0, _currentGameData.dataList.Count)];
         _currentUnswer.history = _currentInputPlusHistory.history;
+        
         _currentUnswer.value = _target;
-        for (int i = 0; i < btns.Length; i++)
+        for (int i = 0; i < NumberButtons.Length; i++)
         {
-            btns[i].GetComponentInParent<Button>().interactable = true;
-            btns[i].text = _currentInputPlusHistory.myInput.input[i].ToString();
-        } 
+            NumberButtons[i].GetComponentInParent<Button>().interactable = true;
+            
+            NumberButtons[i].text = _currentInputPlusHistory.myInput.input[i].ToString();
+        }
+        SetImageAndValueForHelpButtons();
     }
 
     public void NumberClick(Button button)
@@ -120,14 +236,14 @@ public class BtnsManager : MonoBehaviour
             {
                 button.interactable = false;
                 _canClickNumber = false;
-               
                 outputField.text += btnText.text;
                 _currentNumber = int.Parse(btnText.text);
                 _numberCounter++;
             }
             else
             {
-                int? tmpNumber = Operation((int)_currentNumber, _currentOperation, int.Parse(btnText.text));
+                //int? tmpNumber = Operation((int)_currentNumber, _currentOperation, int.Parse(btnText.text));
+                int? tmpNumber = MainLogic.Operation( (int)_currentNumber, _currentOperation, int.Parse(btnText.text));
                 if (tmpNumber != null)
                 {
                     _currentNumber = tmpNumber;
@@ -141,19 +257,17 @@ public class BtnsManager : MonoBehaviour
             {
                 _currentGameData.dataList.Remove(_currentInputPlusHistory);
                 DataManager.SaveData(_currentGameData, _target);
-                GGpannel.gameObject.SetActive(true);
-                
+                GoodGamePannel.gameObject.SetActive(true);                
             }
-        }
-        
+        }        
     }
-    public void OperationClick(Button button)
+    public void OperationClick(string oper)
     {
         if (outputField.text != string.Empty)
         {
-            var oper = button.GetComponentInChildren<Text>().text;
-            _currentOperation = oper;
-            outputField.text = _currentNumber.ToString() + _currentOperation;
+            ///string oper = string.Empty;
+            _currentOperation = MainLogic.StringToOperationParsing( oper);
+            outputField.text = _currentNumber.ToString() + MainLogic.OperationToString(_currentOperation);
             _canClickNumber = true;
         }
     }
@@ -177,16 +291,12 @@ public class BtnsManager : MonoBehaviour
         }
         else return null;
     }
-    public void Help()
-    {
-        if (_currentUnswers != null && helpFiled.text.Length < _currentUnswer.history.Length)
-        {
-            helpFiled.text += _currentUnswer.history[helpFiled.text.Length];
-        }
-    }
+    
     public void QuitGame()
     {
+        StopCounting();
         Application.Quit();
+
     }
     int GetRandomExceptNumber(int a, int b , int exception)
     {
@@ -198,6 +308,6 @@ public class BtnsManager : MonoBehaviour
         }
         return i;
     }
-
+    
 
 }

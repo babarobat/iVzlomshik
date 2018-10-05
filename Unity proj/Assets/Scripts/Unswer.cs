@@ -1,6 +1,4 @@
-﻿
-
-[System.Serializable]
+﻿[System.Serializable]
 public struct Unswer {
 
     public int value;

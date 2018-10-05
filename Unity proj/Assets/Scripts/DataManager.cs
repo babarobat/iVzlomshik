@@ -32,4 +32,8 @@ public static class DataManager
         string path = Path.Combine(Application.dataPath, "Data_" + targetValue.ToString());
         File.WriteAllText(path, data);
     }
+    public static void LoadLastGame()
+    {
+
+    }
 }
