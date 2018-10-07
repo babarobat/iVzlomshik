@@ -93,11 +93,11 @@ public class BtnsManager : MonoBehaviour
     /// </summary>
     private bool _canClickNumber = false;
     /// <summary>
-    /// Последнее нажатое число либо результат последней операции
+    /// Последнее нажатое число либо результат последней операции. Может принимать значение null
     /// </summary>
     private int? _currentNumber;
     /// <summary>
-    /// текущая операция(+-X=)
+    /// текущая операция
     /// </summary>
     //private string _currentOperation;
     private Operations _currentOperation;
@@ -117,6 +117,8 @@ public class BtnsManager : MonoBehaviour
     private int _stackOverflowCounter = 0;
     private int _target;
 
+    TimeCounter tc = new TimeCounter();
+
 
     void CountingAndDisplay()
     {
@@ -130,6 +132,7 @@ public class BtnsManager : MonoBehaviour
                 StopCounting();
                 timerText.text = "LOOSER!";
                 timerText.color = Color.red;
+
             }
         }
     }
@@ -176,13 +179,19 @@ public class BtnsManager : MonoBehaviour
             item.GetComponentInParent<Button>().interactable = true;
         }
     }
-    
-  
 
+
+    private void Update()
+    {
+        tc.Update();
+        timerText.text = tc.GetSecMilisec();
+    }
     public void NewGame()
     {
-        StopCounting();
-        StartCounting();
+        
+        tc.Start(10);
+        //StopCounting();
+        //StartCounting();
         _target = GetRandomExceptNumber(1, 20, _target);
         missionTextField.text = missionText + _target.ToString();
 
